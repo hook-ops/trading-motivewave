@@ -22,11 +22,13 @@ import java.awt.geom.RoundRectangle2D;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.sound.midi.Instrument;
+
 @StudyHeader(
         namespace="com.motivewave",
-        id="ITG_STRATEGY_V_2.0.3",
+        id="ITG_STRATEGY_V_2.1",
         rb="com.motivewave.platform.study.nls.strings2",
-        name="ITG Strategy v2.0.3",
+        name="ITG Strategy v2.1",
         desc="",
         menu="Val Baur",
         overlay=true,
@@ -42,7 +44,7 @@ import java.util.List;
         strategy=true,
         studyOverlay=true)
 
-public class ITG_Strategy_Automatic extends Study
+public class TG_Strategy_Automatic_new extends Study
 {
     Figure StrategyLight = null;
     enum Values { SRO, LongMarkerDrawn, ShortMarkerDrawn, BottomHack, TopHack, TSL, UP, DOWN, TREND };
@@ -68,6 +70,9 @@ public class ITG_Strategy_Automatic extends Study
     private static final String REQUIRE_SUPERTREND_CONSISTENCY = "REQUIRE_SUPERTREND_CONSISTENCY";
     private static final String INTRABAR_EXIT_ON_SUPERTREND_OPPOSITE_TREND = "INTRABAR_EXIT_ON_SUPERTREND_OPPOSITE_TREND";
     private static final String EOB_EXIT_ON_SUPERTREND_OPPOSITE_TREND = "EOB_EXIT_ON_SUPERTREND_OPPOSITE_TREND";
+
+    // Add 20/09/2024 By Nia
+    private static final String PROFIT_TARGET_BUFFER_TICKS = "PROFIT_TARGET_BUFFER_TICKS";
 
     private static final List<NVP> OrderType = List.of(
             new NVP("Market", "Market"),
@@ -164,6 +169,11 @@ public class ITG_Strategy_Automatic extends Study
         strategy_inputs1.addRow(new IntegerDescriptor(STOP_LOSS_TICKS, "Stop Loss (in Ticks)", 10, 1, 999999999, 1));
         strategy_inputs1.addRow(new BooleanDescriptor(USE_TARGET,"Use Profit Target",true));
         strategy_inputs1.addRow(new IntegerDescriptor(TARGET_TICKS, "Profit Target (in Ticks)", 20, 1, 999999999, 1));
+
+        // Add in the `strategy_inputs1` section of initialize() 20/09/2024 By Nia
+        strategy_inputs1.addRow(new IntegerDescriptor(PROFIT_TARGET_BUFFER_TICKS, "Profit Target Buffer (Ticks)", 6, 1, 999999999, 1));
+
+
         sd.addDependency(new EnabledDependency(USE_TARGET, TARGET_TICKS));
         sd.addDependency(new EnabledDependency(USE_STOP_LOSS, STOP_LOSS_TICKS));
         strategy_inputs1.addRow(new IntegerDescriptor(MAX_OPEN_POSITION, "Maximum Open Positions", 20, 0, 999999999, 1));
@@ -346,9 +356,9 @@ public class ITG_Strategy_Automatic extends Study
     }
 
     @Override
-    public ITG_Strategy_Automatic clone() {
-        ITG_Strategy_Automatic study = null;
-        study = (ITG_Strategy_Automatic) super.clone();
+    public TG_Strategy_Automatic_new clone() {
+        TG_Strategy_Automatic_new study = null;
+        study = (TG_Strategy_Automatic_new) super.clone();
         study.placedBuyEntry=false;
         study.placedSellEntry=false;
         study.entriesPlaced = 0;
@@ -715,70 +725,114 @@ public class ITG_Strategy_Automatic extends Study
         super.onBarUpdate(ctx);
     }
 
+    // @Override
+    // public void onSignal(OrderContext ctx, Object signal) {
+
+    //     // SuperTrend Options
+    //     if (signal == Signals.ST_BUY) {
+    //         if (ctx.getPosition()<0)ctx.closeAtMarket();
+    //     } else if (signal == Signals.ST_SELL) {
+    //         if (ctx.getPosition()>0)ctx.closeAtMarket();
+    //     }
+
+    //     // If we have an open position, ignore signals.
+    //     if (ctx.getPosition() != 0 || !ctx.getActiveOrders().isEmpty() || dayPnL >= maxProfit || dayPnL <= maxLoss) return;
+    //     Instrument ins = ctx.getInstrument();
+    //     // If we get a buy signal
+    //     int lotSize = getSettings().getTradeLots();
+    //     boolean superTrendLongAllowed=!getSettings().getBoolean(REQUIRE_SUPERTREND_CONSISTENCY)||(getSettings().getBoolean(REQUIRE_SUPERTREND_CONSISTENCY)&&SuperTrendDirection==1);
+    //     boolean superTrendShortAllowed=!getSettings().getBoolean(REQUIRE_SUPERTREND_CONSISTENCY)||(getSettings().getBoolean(REQUIRE_SUPERTREND_CONSISTENCY)&&SuperTrendDirection==-1);
+    //     if (signal == Signals.BUY && superTrendLongAllowed) {
+    //         placedBuyEntry=true;
+    //         originalSignalPrice = ins.getLastPrice();
+    //         if (limitOrders) { // Ask has to be greater than the desired entry price, else we need to use a market order
+    //             Float desiredEntryPrice = (float) ins.round(ins.getLastPrice() - entryTicks * ins.getTickSize());
+    //             if (ins.getAskPrice() > desiredEntryPrice) { // Can use limit order
+    //                 ctx.submitOrders(ctx.createLimitOrder(Enums.OrderAction.BUY, Enums.TIF.GTC,lotSize /** 6*/,desiredEntryPrice));
+    //             } else { // Else need to enter by market
+    //                 ctx.buy(lotSize );//* 6);
+    //             }
+    //         } else ctx.buy(lotSize );//* 6);
+    //         placeRegularlySpacedOrders(ctx, Enums.OrderAction.BUY, 5, 0);
+    //     } else if (signal == Signals.SELL && superTrendShortAllowed) {
+    //         placedSellEntry=true;
+    //         originalSignalPrice = ins.getLastPrice();
+    //         if (limitOrders) { // Bid has to be less than the desired entry price, else we need to use a market order
+    //             Float desiredEntryPrice = (float) ins.round(ins.getLastPrice() + entryTicks * ins.getTickSize());
+    //             if (ins.getBidPrice() < desiredEntryPrice) { // Can use limit order
+    //                 ctx.submitOrders(ctx.createLimitOrder(Enums.OrderAction.SELL, Enums.TIF.GTC,lotSize/* * 6*/,desiredEntryPrice));
+    //             } else { // Else need to enter by market
+    //                 ctx.sell(lotSize );//* 6);
+    //             }
+    //         } else ctx.sell(lotSize );//* 6);
+    //         placeRegularlySpacedOrders(ctx, Enums.OrderAction.SELL, 5, 0);
+    //     }
+
+    //     return;
+
+    // }
+
+
+    // Add New Logic 20/09/2024 By Nia
     @Override
     public void onSignal(OrderContext ctx, Object signal) {
-
         // SuperTrend Options
         if (signal == Signals.ST_BUY) {
-            if (ctx.getPosition()<0)ctx.closeAtMarket();
+            if (ctx.getPosition() < 0) ctx.closeAtMarket();
         } else if (signal == Signals.ST_SELL) {
-            if (ctx.getPosition()>0)ctx.closeAtMarket();
+            if (ctx.getPosition() > 0) ctx.closeAtMarket();
         }
 
+        // If we already have an open position, adjust orders based on unrealized losses
+        if (ctx.getPosition() != 0) {
+            double unrealizedPnL = ctx.getUnrealizedPnL();
+            if (unrealizedPnL < 0 && ((signal == Signals.BUY && ctx.getPosition() < 0) || (signal == Signals.SELL && ctx.getPosition() > 0))) {
+                // Adjust the logic to place new orders and handle profit target
+                adjustOrdersWithUnrealizedLoss(ctx, signal);
+                return;
+            }
+        }
 
+        // If we have an open position, ignore new signals
+        if (!ctx.getActiveOrders().isEmpty() || dayPnL >= maxProfit || dayPnL <= maxLoss) return;
 
-
-
-
-        // If we have an open position, ignore signals.
-        if (ctx.getPosition() != 0 || !ctx.getActiveOrders().isEmpty() || dayPnL >= maxProfit || dayPnL <= maxLoss) return;
         Instrument ins = ctx.getInstrument();
-        // If we get a buy signal
         int lotSize = getSettings().getTradeLots();
-        boolean superTrendLongAllowed=!getSettings().getBoolean(REQUIRE_SUPERTREND_CONSISTENCY)||(getSettings().getBoolean(REQUIRE_SUPERTREND_CONSISTENCY)&&SuperTrendDirection==1);
-        boolean superTrendShortAllowed=!getSettings().getBoolean(REQUIRE_SUPERTREND_CONSISTENCY)||(getSettings().getBoolean(REQUIRE_SUPERTREND_CONSISTENCY)&&SuperTrendDirection==-1);
-        if (signal == Signals.BUY && superTrendLongAllowed) {
-            placedBuyEntry=true;
+
+        // Handle buy signals
+        if (signal == Signals.BUY && SuperTrendDirection == 1) {
+            placedBuyEntry = true;
             originalSignalPrice = ins.getLastPrice();
-            if (limitOrders) { // Ask has to be greater than the desired entry price, else we need to use a market order
+
+            if (limitOrders) {
                 Float desiredEntryPrice = (float) ins.round(ins.getLastPrice() - entryTicks * ins.getTickSize());
-                if (ins.getAskPrice() > desiredEntryPrice) { // Can use limit order
-                    ctx.submitOrders(ctx.createLimitOrder(Enums.OrderAction.BUY, Enums.TIF.GTC,lotSize /** 6*/,desiredEntryPrice));
-                } else { // Else need to enter by market
-                    ctx.buy(lotSize );//* 6);
+                if (ins.getAskPrice() > desiredEntryPrice) {
+                    ctx.submitOrders(ctx.createLimitOrder(Enums.OrderAction.BUY, Enums.TIF.GTC, lotSize, desiredEntryPrice));
+                } else {
+                    ctx.buy(lotSize);
                 }
-            } else ctx.buy(lotSize );//* 6);
+            } else {
+                ctx.buy(lotSize);
+            }
             placeRegularlySpacedOrders(ctx, Enums.OrderAction.BUY, 5, 0);
-        } else if (signal == Signals.SELL && superTrendShortAllowed) {
-            placedSellEntry=true;
+        } else if (signal == Signals.SELL && SuperTrendDirection == -1) {
+            placedSellEntry = true;
             originalSignalPrice = ins.getLastPrice();
-            if (limitOrders) { // Bid has to be less than the desired entry price, else we need to use a market order
+
+            if (limitOrders) {
                 Float desiredEntryPrice = (float) ins.round(ins.getLastPrice() + entryTicks * ins.getTickSize());
-                if (ins.getBidPrice() < desiredEntryPrice) { // Can use limit order
-                    ctx.submitOrders(ctx.createLimitOrder(Enums.OrderAction.SELL, Enums.TIF.GTC,lotSize/* * 6*/,desiredEntryPrice));
-                } else { // Else need to enter by market
-                    ctx.sell(lotSize );//* 6);
+                if (ins.getBidPrice() < desiredEntryPrice) {
+                    ctx.submitOrders(ctx.createLimitOrder(Enums.OrderAction.SELL, Enums.TIF.GTC, lotSize, desiredEntryPrice));
+                } else {
+                    ctx.sell(lotSize);
                 }
-            } else ctx.sell(lotSize );//* 6);
+            } else {
+                ctx.sell(lotSize);
+            }
             placeRegularlySpacedOrders(ctx, Enums.OrderAction.SELL, 5, 0);
         }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        return;
-
     }
+
 
     private void placeRegularlySpacedOrders(OrderContext ctx, Enums.OrderAction action, int numOrders, int spacingOffset) {
         Instrument ins = ctx.getInstrument();
@@ -806,6 +860,75 @@ public class ITG_Strategy_Automatic extends Study
             }
         }
     }
+
+
+    // Add 09/20/2024 By Nia
+    private void adjustOrdersWithUnrealizedLoss(OrderContext ctx, Object signal) {
+        Instrument ins = ctx.getInstrument();
+        double unrealizedPnL = ctx.getUnrealizedPnL();
+        double avgEntryPrice = ctx.getAvgEntryPrice();
+        
+        // Calculate how many new orders need to be placed
+        int numNewOrders = calculateNumNewOrdersToRecover(unrealizedPnL, avgEntryPrice, ins);
+        
+        // Cancel the existing profit orders
+        if (useTarget) {
+            cancelProfitOrders(ctx);
+        }
+        
+        // Place new market orders to recover losses
+        if (signal == Signals.BUY) {
+            ctx.buy(numNewOrders);
+        } else if (signal == Signals.SELL) {
+            ctx.sell(numNewOrders);
+        }
+        
+        // Recalculate the new average price
+        double newAvgPrice = calculateNewAveragePrice(ctx, ins, numNewOrders);
+        
+        // Adjust the profit target with the buffer
+        adjustProfitTargetWithBuffer(ctx, signal, newAvgPrice);
+    }
+    
+    // Helper method 20/09/2024 Add By Nia
+    private int calculateNumNewOrdersToRecover(double unrealizedPnL, double avgEntryPrice, Instrument ins) {
+        int numOrders = (int) Math.ceil(Math.abs(unrealizedPnL / (profitTicks * ins.getTickSize())));
+        return Math.max(1, numOrders); // Always place at least 1 order
+    }
+    
+    private void cancelProfitOrders(OrderContext ctx) {
+        if (!ctx.getActiveOrders().isEmpty()) {
+            for (Order order : ctx.getActiveOrders()) {
+                if (order.getType().equals(Enums.OrderType.LIMIT)) {
+                    ctx.cancelOrders(order);
+                }
+            }
+        }
+    }
+    
+    private double calculateNewAveragePrice(OrderContext ctx, Instrument ins, int numNewOrders) {
+        double totalPositionValue = ctx.getPosition() * ctx.getAvgEntryPrice() + numNewOrders * ins.getLastPrice();
+        double newAvgPrice = totalPositionValue / (ctx.getPosition() + numNewOrders);
+        return newAvgPrice;
+    }
+    
+    private void adjustProfitTargetWithBuffer(OrderContext ctx, Object signal, double newAvgPrice) {
+        Instrument ins = ctx.getInstrument();
+        int bufferTicks = getSettings().getInteger(PROFIT_TARGET_BUFFER_TICKS);
+        
+        if (signal == Signals.BUY) {
+            double newProfitTarget = newAvgPrice - (profitTicks + bufferTicks) * ins.getTickSize();
+            placeProfitTarget(ctx, Enums.OrderAction.SELL, (float) newProfitTarget);
+        } else if (signal == Signals.SELL) {
+            double newProfitTarget = newAvgPrice + (profitTicks + bufferTicks) * ins.getTickSize();
+            placeProfitTarget(ctx, Enums.OrderAction.BUY, (float) newProfitTarget);
+        }
+    }
+    
+
+
+
+
 
     @Override
     public void onOrderCancelled(OrderContext ctx, Order order) {
@@ -879,25 +1002,45 @@ public class ITG_Strategy_Automatic extends Study
 
 
 
-    private void placeProfitTarget(OrderContext ctx, Enums.OrderAction action, Float fillPrice) {
+    // private void placeProfitTarget(OrderContext ctx, Enums.OrderAction action, Float fillPrice) {
+    //     Instrument ins = ctx.getInstrument();
+    //     if (action.equals(Enums.OrderAction.SELL)) {
+    //         Float desiredExitPrice = (float) ins.round(fillPrice + profitTicks * ins.getTickSize());
+    //         if (ins.getBidPrice() < desiredExitPrice) { // Can use limit order
+    //             ctx.submitOrders(ctx.createLimitOrder(Enums.OrderAction.SELL, Enums.TIF.GTC,ctx.getPosition(),desiredExitPrice));
+    //         } else { // Else need to enter by market
+    //             ctx.sell(ctx.getPosition());
+    //         }
+    //     }
+    //     else {
+    //         Float desiredExitPrice = (float) ins.round(fillPrice - profitTicks * ins.getTickSize());
+    //         if (ins.getAskPrice() > desiredExitPrice) { // Can use limit order
+    //             ctx.submitOrders(ctx.createLimitOrder(Enums.OrderAction.BUY, Enums.TIF.GTC,ctx.getPosition(),desiredExitPrice));
+    //         } else { // Else need to enter by market
+    //             ctx.buy(ctx.getPosition());
+    //         }
+    //     }
+    // }
+
+    // 09/20/2024 Add By Nia
+    private void placeProfitTarget(OrderContext ctx, Enums.OrderAction action, Float newProfitTarget) {
         Instrument ins = ctx.getInstrument();
         if (action.equals(Enums.OrderAction.SELL)) {
-            Float desiredExitPrice = (float) ins.round(fillPrice + profitTicks * ins.getTickSize());
-            if (ins.getBidPrice() < desiredExitPrice) { // Can use limit order
-                ctx.submitOrders(ctx.createLimitOrder(Enums.OrderAction.SELL, Enums.TIF.GTC,ctx.getPosition(),desiredExitPrice));
-            } else { // Else need to enter by market
+            if (ins.getBidPrice() < newProfitTarget) {
+                ctx.submitOrders(ctx.createLimitOrder(Enums.OrderAction.SELL, Enums.TIF.GTC, ctx.getPosition(), newProfitTarget));
+            } else {
                 ctx.sell(ctx.getPosition());
             }
-        }
-        else {
-            Float desiredExitPrice = (float) ins.round(fillPrice - profitTicks * ins.getTickSize());
-            if (ins.getAskPrice() > desiredExitPrice) { // Can use limit order
-                ctx.submitOrders(ctx.createLimitOrder(Enums.OrderAction.BUY, Enums.TIF.GTC,ctx.getPosition(),desiredExitPrice));
-            } else { // Else need to enter by market
+        } else {
+            if (ins.getAskPrice() > newProfitTarget) {
+                ctx.submitOrders(ctx.createLimitOrder(Enums.OrderAction.BUY, Enums.TIF.GTC, ctx.getPosition(), newProfitTarget));
+            } else {
                 ctx.buy(ctx.getPosition());
             }
         }
     }
+    
+
 
     private void adjustProfitTarget(OrderContext ctx, Enums.OrderAction action) {
         if (ctx.getPosition() == 0) return;
